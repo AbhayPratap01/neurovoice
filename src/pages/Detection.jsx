@@ -1,237 +1,762 @@
 import AudioWaveform from "../components/AudioWaveforms";
+
 import {
   ArrowLeft,
   AudioLines,
   Check,
+  CircleAlert,
   FileAudio,
   Info,
+  LoaderCircle,
   Mic,
   RotateCcw,
   Upload,
   Waves,
 } from "lucide-react";
 
-import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { convertBlobToWav } from "../utils/audioUtils";
+import { predictVoice } from "../Services/api";
+
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export default function Detection() {
-  const [mode, setMode] = useState("upload");
-  const [isRecording, setIsRecording] = useState(false);
-  const [microphoneStream, setMicrophoneStream] = useState(null);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [audioFile, setAudioFile] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
+  const navigate = useNavigate();
 
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const timerRef = useRef(null);
-  const fileInputRef = useRef(null);
+  /* -----------------------------
+     Constants
+  ------------------------------ */
+
+  const MAX_RECORDING_TIME = 3;
+  const MIN_RECORDING_TIME = 1.5;
+
+  /* -----------------------------
+     State
+  ------------------------------ */
+
+  const [mode, setMode] = useState("upload");
+
+  const [isRecording, setIsRecording] =
+    useState(false);
+
+  const [isAnalyzing, setIsAnalyzing] =
+    useState(false);
+
+  const [microphoneStream, setMicrophoneStream] =
+    useState(null);
+
+  const [recordingTime, setRecordingTime] =
+    useState(0);
+
+  const [audioUrl, setAudioUrl] =
+    useState(null);
+
+  const [audioFile, setAudioFile] =
+    useState(null);
+
+  const [dragActive, setDragActive] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  /* -----------------------------
+     Refs
+  ------------------------------ */
+
+  const mediaRecorderRef =
+    useRef(null);
+
+  const audioChunksRef =
+    useRef([]);
+
+  const timerRef =
+    useRef(null);
+
+  const recordingStartTimeRef =
+    useRef(null);
+
+  const fileInputRef =
+    useRef(null);
 
   /* -----------------------------
      Recording timer
   ------------------------------ */
 
   useEffect(() => {
-    if (isRecording) {
-      timerRef.current = setInterval(() => {
-        setRecordingTime((previous) => previous + 1);
-      }, 1000);
+    if (!isRecording) {
+      clearInterval(timerRef.current);
+      return;
     }
 
+    recordingStartTimeRef.current =
+      Date.now();
+
+    timerRef.current = setInterval(() => {
+      if (!recordingStartTimeRef.current) {
+        return;
+      }
+
+      const elapsed =
+        (Date.now() -
+          recordingStartTimeRef.current) /
+        1000;
+
+      const clampedElapsed =
+        Math.min(
+          elapsed,
+          MAX_RECORDING_TIME
+        );
+
+      setRecordingTime(
+        clampedElapsed
+      );
+
+      /* Automatically stop at 3 seconds */
+      if (
+        elapsed >=
+        MAX_RECORDING_TIME
+      ) {
+        clearInterval(
+          timerRef.current
+        );
+
+        if (
+          mediaRecorderRef.current &&
+          mediaRecorderRef.current
+            .state !== "inactive"
+        ) {
+          mediaRecorderRef.current.stop();
+        }
+
+        setIsRecording(false);
+      }
+    }, 50);
+
     return () => {
-      clearInterval(timerRef.current);
+      clearInterval(
+        timerRef.current
+      );
     };
   }, [isRecording]);
+
+  /* -----------------------------
+     Cleanup
+  ------------------------------ */
+
+  useEffect(() => {
+    return () => {
+      clearInterval(
+        timerRef.current
+      );
+
+      if (audioUrl) {
+        URL.revokeObjectURL(
+          audioUrl
+        );
+      }
+
+      if (
+        microphoneStream
+      ) {
+        microphoneStream
+          .getTracks()
+          .forEach((track) =>
+            track.stop()
+          );
+      }
+    };
+  }, [audioUrl, microphoneStream]);
 
   /* -----------------------------
      Format recording time
   ------------------------------ */
 
   const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const safeSeconds =
+      Math.min(
+        Math.max(seconds, 0),
+        MAX_RECORDING_TIME
+      );
 
-    return `${String(minutes).padStart(2, "0")}:${String(
-      remainingSeconds
-    ).padStart(2, "0")}`;
+    const secondsPart =
+      Math.floor(safeSeconds);
+
+    const milliseconds =
+      Math.floor(
+        (safeSeconds % 1) * 10
+      );
+
+    return `00:${String(
+      secondsPart
+    ).padStart(2, "0")}.${milliseconds}`;
   };
 
   /* -----------------------------
      Start recording
   ------------------------------ */
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+  const startRecording =
+    async () => {
+      try {
+        setError("");
 
-      setMicrophoneStream(stream);
-
-      const recorder = new MediaRecorder(stream);
-
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+        /*
+         * Clean up any previous stream.
+         */
+        if (
+          microphoneStream
+        ) {
+          microphoneStream
+            .getTracks()
+            .forEach((track) =>
+              track.stop()
+            );
         }
-      };
 
-      recorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
-        });
+        const stream =
+          await navigator.mediaDevices.getUserMedia(
+            {
+              audio: true,
+            }
+          );
 
-        const url = URL.createObjectURL(blob);
-
-        setAudioUrl(url);
-        setAudioFile(
-          new File([blob], "neurovoice-recording.webm", {
-            type: "audio/webm",
-          })
+        setMicrophoneStream(
+          stream
         );
 
-        stream.getTracks().forEach((track) => track.stop());
-      };
+        /*
+         * Browser recording is normally
+         * WebM/Opus.
+         *
+         * We convert it to WAV before
+         * sending it to the Python backend.
+         */
+        let recorder;
 
-      recorder.start();
+        try {
+          if (
+            MediaRecorder.isTypeSupported(
+              "audio/webm;codecs=opus"
+            )
+          ) {
+            recorder =
+              new MediaRecorder(
+                stream,
+                {
+                  mimeType:
+                    "audio/webm;codecs=opus",
+                }
+              );
+          } else {
+            recorder =
+              new MediaRecorder(
+                stream
+              );
+          }
+        } catch {
+          recorder =
+            new MediaRecorder(
+              stream
+            );
+        }
 
-      setRecordingTime(0);
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Microphone access error:", error);
+        mediaRecorderRef.current =
+          recorder;
 
-      alert(
-        "Microphone access was denied. Please allow microphone permission and try again."
-      );
-    }
-  };
+        audioChunksRef.current =
+          [];
+
+        recorder.ondataavailable =
+          (event) => {
+            if (
+              event.data &&
+              event.data.size > 0
+            ) {
+              audioChunksRef.current.push(
+                event.data
+              );
+            }
+          };
+
+        recorder.onerror =
+          (event) => {
+            console.error(
+              "MediaRecorder error:",
+              event
+            );
+
+            setError(
+              "An error occurred while recording your voice."
+            );
+
+            setIsRecording(
+              false
+            );
+
+            clearInterval(
+              timerRef.current
+            );
+          };
+
+        recorder.onstop =
+          () => {
+            const elapsed =
+              recordingStartTimeRef.current
+                ? (Date.now() -
+                    recordingStartTimeRef.current) /
+                  1000
+                : recordingTime;
+
+            /*
+             * Reject extremely short recordings.
+             */
+            if (
+              elapsed <
+              MIN_RECORDING_TIME
+            ) {
+              setError(
+                "The recording is too short. Please record for at least 1.5 seconds."
+              );
+
+              stream
+                .getTracks()
+                .forEach((track) =>
+                  track.stop()
+                );
+
+              setMicrophoneStream(
+                null
+              );
+
+              setRecordingTime(
+                0
+              );
+
+              recordingStartTimeRef.current =
+                null;
+
+              return;
+            }
+
+            const mimeType =
+              recorder.mimeType ||
+              "audio/webm";
+
+            const blob =
+              new Blob(
+                audioChunksRef.current,
+                {
+                  type: mimeType,
+                }
+              );
+
+            const url =
+              URL.createObjectURL(
+                blob
+              );
+
+            /*
+             * Keep the browser recording
+             * for preview.
+             *
+             * It will be converted to WAV
+             * inside handleAnalyze().
+             */
+            setAudioUrl(url);
+
+            setAudioFile(
+              new File(
+                [blob],
+                "neurovoice-recording.webm",
+                {
+                  type: mimeType,
+                }
+              )
+            );
+
+            stream
+              .getTracks()
+              .forEach((track) =>
+                track.stop()
+              );
+
+            setMicrophoneStream(
+              null
+            );
+
+            recordingStartTimeRef.current =
+              null;
+          };
+
+        recorder.start();
+
+        setRecordingTime(
+          0
+        );
+
+        setIsRecording(
+          true
+        );
+      } catch (err) {
+        console.error(
+          "Microphone access error:",
+          err
+        );
+
+        setIsRecording(
+          false
+        );
+
+        setMicrophoneStream(
+          null
+        );
+
+        setError(
+          "Microphone access was denied or is unavailable. Please allow microphone permission and try again."
+        );
+      }
+    };
 
   /* -----------------------------
      Stop recording
   ------------------------------ */
 
-  const stopRecording = () => {
-  if (
-    mediaRecorderRef.current &&
-    mediaRecorderRef.current.state !== "inactive"
-  ) {
-    mediaRecorderRef.current.stop();
-  }
+  const stopRecording =
+    () => {
+      clearInterval(
+        timerRef.current
+      );
 
-  clearInterval(timerRef.current);
+      setIsRecording(
+        false
+      );
 
-  setIsRecording(false);
-
-  if (microphoneStream) {
-    microphoneStream
-      .getTracks()
-      .forEach((track) => track.stop());
-
-    setMicrophoneStream(null);
-  }
-};
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current
+          .state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+    };
 
   /* -----------------------------
      Handle uploaded file
   ------------------------------ */
 
-  const handleFile = (file) => {
-    if (!file) return;
-
-    const allowedTypes = [
-      "audio/wav",
-      "audio/x-wav",
-      "audio/mpeg",
-      "audio/mp3",
-      "audio/mp4",
-      "audio/x-m4a",
-      "audio/webm",
-    ];
-
-    const isAudio =
-      file.type.startsWith("audio/") ||
-      allowedTypes.includes(file.type);
-
-    if (!isAudio) {
-      alert("Please select an audio file.");
+  const handleFile = (
+    file
+  ) => {
+    if (!file) {
       return;
     }
 
-    setAudioFile(file);
-    setAudioUrl(URL.createObjectURL(file));
-    setMode("upload");
+    setError("");
+
+    /*
+     * The backend accepts WAV directly.
+     *
+     * Other browser-supported audio formats
+     * can still be selected because our
+     * frontend converts them to WAV before
+     * prediction.
+     */
+    const allowedExtensions = [
+      ".wav",
+      ".mp3",
+      ".mpeg",
+      ".m4a",
+      ".mp4",
+      ".webm",
+      ".ogg",
+    ];
+
+    const fileName =
+      file.name.toLowerCase();
+
+    const hasAllowedExtension =
+      allowedExtensions.some(
+        (extension) =>
+          fileName.endsWith(
+            extension
+          )
+      );
+
+    const isAudio =
+      file.type.startsWith(
+        "audio/"
+      ) ||
+      hasAllowedExtension;
+
+    if (!isAudio) {
+      setError(
+        "Please select a valid audio file."
+      );
+
+      return;
+    }
+
+    /*
+     * Backend limit = 25 MB.
+     */
+    const MAX_FILE_SIZE =
+      25 * 1024 * 1024;
+
+    if (
+      file.size >
+      MAX_FILE_SIZE
+    ) {
+      setError(
+        "The selected file is larger than the 25 MB limit."
+      );
+
+      return;
+    }
+
+    if (audioUrl) {
+      URL.revokeObjectURL(
+        audioUrl
+      );
+    }
+
+    setAudioFile(
+      file
+    );
+
+    setAudioUrl(
+      URL.createObjectURL(
+        file
+      )
+    );
+
+    setMode(
+      "upload"
+    );
   };
 
   /* -----------------------------
      File input
   ------------------------------ */
 
-  const handleFileInput = (event) => {
-    const file = event.target.files?.[0];
+  const handleFileInput =
+    (event) => {
+      const file =
+        event.target.files?.[0];
 
-    handleFile(file);
-  };
+      handleFile(file);
+
+      /*
+       * Allow selecting the same
+       * file again later.
+       */
+      event.target.value = "";
+    };
 
   /* -----------------------------
      Drag & drop
   ------------------------------ */
 
-  const handleDrop = (event) => {
-    event.preventDefault();
+  const handleDrop =
+    (event) => {
+      event.preventDefault();
 
-    setDragActive(false);
+      setDragActive(
+        false
+      );
 
-    const file = event.dataTransfer.files?.[0];
+      const file =
+        event.dataTransfer.files?.[0];
 
-    handleFile(file);
-  };
+      handleFile(file);
+    };
 
   /* -----------------------------
      Reset
   ------------------------------ */
 
-  const resetRecording = () => {
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl);
-    }
+  const resetRecording =
+    () => {
+      clearInterval(
+        timerRef.current
+      );
 
-    setAudioUrl(null);
-    setAudioFile(null);
-    setRecordingTime(0);
-  };
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current
+          .state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+
+      if (microphoneStream) {
+        microphoneStream
+          .getTracks()
+          .forEach((track) =>
+            track.stop()
+          );
+      }
+
+      if (audioUrl) {
+        URL.revokeObjectURL(
+          audioUrl
+        );
+      }
+
+      setAudioUrl(
+        null
+      );
+
+      setAudioFile(
+        null
+      );
+
+      setMicrophoneStream(
+        null
+      );
+
+      setRecordingTime(
+        0
+      );
+
+      setIsRecording(
+        false
+      );
+
+      setIsAnalyzing(
+        false
+      );
+
+      setError("");
+
+      recordingStartTimeRef.current =
+        null;
+
+      audioChunksRef.current =
+        [];
+
+      if (
+        fileInputRef.current
+      ) {
+        fileInputRef.current.value =
+          "";
+      }
+    };
 
   /* -----------------------------
-     Analyze
+     Analyze voice
   ------------------------------ */
 
-  const handleAnalyze = () => {
-    if (!audioFile) {
-      alert("Please record or upload a voice sample first.");
-      return;
-    }
+  const handleAnalyze =
+    async () => {
+      if (!audioFile) {
+        setError(
+          "Please record or upload a voice sample first."
+        );
 
-    /*
-      Backend integration will be added here.
+        return;
+      }
 
-      Example later:
+      setError("");
 
-      const formData = new FormData();
-      formData.append("file", audioFile);
+      setIsAnalyzing(
+        true
+      );
 
-      fetch("http://localhost:8000/predict", {
-        method: "POST",
-        body: formData,
-      });
-    */
+      try {
+        /*
+         * Backend contract:
+         *
+         * POST /predict
+         * multipart/form-data
+         * field = file
+         * format = WAV
+         *
+         * Therefore:
+         *
+         * WAV upload → send directly
+         * WebM/other → convert to WAV
+         */
 
-    alert(
-      "Voice sample ready. ML backend integration will be connected next."
-    );
-  };
+        let wavFile =
+          audioFile;
+
+        if (
+          !audioFile.name
+            .toLowerCase()
+            .endsWith(".wav")
+        ) {
+          const wavBlob =
+            await convertBlobToWav(
+              audioFile
+            );
+
+          wavFile =
+            new File(
+              [wavBlob],
+              "neurovoice-recording.wav",
+              {
+                type: "audio/wav",
+              }
+            );
+        }
+
+        /*
+         * Send the real audio file
+         * to the FastAPI ML backend.
+         */
+        const result =
+          await predictVoice(
+            wavFile
+          );
+
+        console.log(
+          "ML prediction result:",
+          result
+        );
+
+        /*
+         * Pass the actual backend
+         * response to Results.jsx.
+         */
+        navigate(
+          "/results",
+          {
+            state: {
+              result,
+              audioFile:
+                wavFile,
+            },
+          }
+        );
+      } catch (err) {
+        console.error(
+          "Voice analysis failed:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Unable to analyze the voice sample. Please try again."
+        );
+      } finally {
+        setIsAnalyzing(
+          false
+        );
+      }
+    };
+
+  /* -----------------------------
+     Render
+  ------------------------------ */
 
   return (
     <main className="min-h-screen bg-[#07111f] pt-20">
@@ -281,8 +806,13 @@ export default function Detection() {
           <div className="mx-auto flex max-w-md rounded-xl border border-white/10 bg-black/20 p-1">
 
             <button
-              onClick={() => setMode("record")}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition ${
+              type="button"
+              onClick={() => {
+                setError("");
+                setMode("record");
+              }}
+              disabled={isAnalyzing}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 mode === "record"
                   ? "bg-cyan-400 text-slate-950"
                   : "text-slate-400 hover:text-white"
@@ -293,8 +823,13 @@ export default function Detection() {
             </button>
 
             <button
-              onClick={() => setMode("upload")}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition ${
+              type="button"
+              onClick={() => {
+                setError("");
+                setMode("upload");
+              }}
+              disabled={isAnalyzing}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 mode === "upload"
                   ? "bg-cyan-400 text-slate-950"
                   : "text-slate-400 hover:text-white"
@@ -310,228 +845,419 @@ export default function Detection() {
               RECORD MODE
           ================================================== */}
 
-          {mode === "record" && !audioUrl && (
-            <div className="mt-10">
+          {mode === "record" &&
+            !audioUrl && (
+              <div className="mt-10">
 
-              <div className="rounded-2xl border border-white/10 bg-[#050d18] p-8 sm:p-12">
+                <div className="rounded-2xl border border-white/10 bg-[#050d18] p-8 sm:p-12">
 
-                {/* Recording visualization */}
-                <AudioWaveform
-  stream={microphoneStream}
-  active={isRecording}
-  height={192}
-/>
+                  {/* Instruction */}
+                  <div className="text-center">
 
-                {/* Timer */}
-                <div className="mt-8 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
+                      <Mic className="h-6 w-6 text-cyan-400" />
+                    </div>
 
-                  <div className="text-4xl font-semibold tabular-nums text-white">
-                    {formatTime(recordingTime)}
+                    <h2 className="mt-5 text-xl font-semibold text-white">
+                      {isRecording
+                        ? 'Keep saying "AH"...'
+                        : "Ready to record"}
+                    </h2>
+
+                    <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-500">
+                      {isRecording
+                        ? "Hold the vowel steadily. Recording will stop automatically after 3 seconds."
+                        : 'Take a breath and sustain the vowel sound "AH" clearly for approximately 3 seconds.'}
+                    </p>
+
                   </div>
 
-                  <p className="mt-2 text-sm text-slate-500">
+                  {/* Waveform */}
+                  <div className="mt-8">
+                    <AudioWaveform
+                      stream={
+                        microphoneStream
+                      }
+                      active={
+                        isRecording
+                      }
+                      height={192}
+                    />
+                  </div>
+
+                  {/* Timer */}
+                  <div className="mt-8 text-center">
+
+                    <div className="text-4xl font-semibold tabular-nums tracking-tight text-white">
+                      {formatTime(
+                        recordingTime
+                      )}
+                    </div>
+
+                    <div className="mx-auto mt-4 h-1.5 max-w-xs overflow-hidden rounded-full bg-white/5">
+                      <div
+                        className="h-full rounded-full bg-cyan-400 transition-[width] duration-100"
+                        style={{
+                          width: `${
+                            Math.min(
+                              (recordingTime /
+                                MAX_RECORDING_TIME) *
+                                100,
+                              100
+                            )
+                          }%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="mt-3 text-xs text-slate-600">
+                      Maximum recording time: 3 seconds
+                    </p>
+
+                  </div>
+
+                  {/* Record button */}
+                  <div className="mt-8 flex justify-center">
+
+                    {!isRecording ? (
+                      <button
+                        type="button"
+                        onClick={
+                          startRecording
+                        }
+                        disabled={
+                          isAnalyzing
+                        }
+                        className="group flex h-20 w-20 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-400/10 transition hover:scale-105 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Start recording"
+                      >
+                        <Mic className="h-8 w-8 transition group-hover:scale-110" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={
+                          stopRecording
+                        }
+                        className="group flex h-20 w-20 items-center justify-center rounded-full border-4 border-cyan-400/20 bg-cyan-400 text-slate-950 transition hover:scale-105 hover:bg-cyan-300"
+                        aria-label="Stop recording"
+                      >
+                        <div className="h-7 w-7 rounded-md bg-slate-950 transition group-hover:scale-90" />
+                      </button>
+                    )}
+
+                  </div>
+
+                  <p className="mt-5 text-center text-xs text-slate-600">
                     {isRecording
-                      ? "Recording your voice..."
-                      : "Ready to record"}
+                      ? "Click to stop recording"
+                      : "Click the microphone to begin"}
                   </p>
 
-                </div>
+                  {/* Recording guideline */}
+                  <div className="mt-8 flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.015] p-4">
 
-                {/* Record button */}
-                <div className="mt-8 flex justify-center">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
 
-                  {!isRecording ? (
-                    <button
-                      onClick={startRecording}
-                      className="group flex h-20 w-20 items-center justify-center rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-400/10 transition hover:scale-105 hover:bg-cyan-300"
-                    >
-                      <Mic className="h-8 w-8 transition group-hover:scale-110" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={stopRecording}
-                      className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-cyan-400/20 bg-cyan-400 text-slate-950"
-                    >
-                      <div className="h-7 w-7 rounded-md bg-slate-950" />
-                    </button>
-                  )}
+                    <div>
+                      <p className="text-xs font-medium text-slate-400">
+                        Recording guideline
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-slate-600">
+                        Use a quiet environment and keep the microphone at a
+                        consistent distance. The research workflow uses
+                        sustained vowel recordings for voice analysis.
+                      </p>
+                    </div>
+
+                  </div>
 
                 </div>
-
-                <p className="mt-5 text-center text-xs text-slate-600">
-                  {isRecording
-                    ? "Click to stop recording"
-                    : "Click the microphone to begin"}
-                </p>
 
               </div>
-
-            </div>
-          )}
+            )}
 
           {/* =================================================
               UPLOAD MODE
           ================================================== */}
 
-          {mode === "upload" && !audioUrl && (
-            <div className="mt-10">
+          {mode === "upload" &&
+            !audioUrl && (
+              <div className="mt-10">
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                onChange={handleFileInput}
-                className="hidden"
-              />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={
+                    handleFileInput
+                  }
+                  className="hidden"
+                />
 
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragActive(true);
-                }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={handleDrop}
-                className={`flex min-h-80 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition ${
-                  dragActive
-                    ? "border-cyan-400 bg-cyan-400/5"
-                    : "border-white/10 bg-[#050d18] hover:border-cyan-400/30 hover:bg-white/2"
-                }`}
-              >
+                <button
+                  type="button"
+                  onClick={() =>
+                    fileInputRef.current?.click()
+                  }
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragActive(
+                      true
+                    );
+                  }}
+                  onDragLeave={() =>
+                    setDragActive(
+                      false
+                    )
+                  }
+                  onDrop={
+                    handleDrop
+                  }
+                  disabled={
+                    isAnalyzing
+                  }
+                  className={`flex min-h-80 w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 text-center transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    dragActive
+                      ? "border-cyan-400 bg-cyan-400/5"
+                      : "border-white/10 bg-[#050d18] hover:border-cyan-400/30 hover:bg-white/2"
+                  }`}
+                >
 
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
-                  <FileAudio className="h-7 w-7 text-cyan-400" />
-                </div>
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
+                    <FileAudio className="h-7 w-7 text-cyan-400" />
+                  </div>
 
-                <h3 className="mt-6 text-lg font-semibold text-white">
-                  Upload a voice recording
-                </h3>
+                  <h3 className="mt-6 text-lg font-semibold text-white">
+                    Upload a voice recording
+                  </h3>
 
-                <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-                  Drag and drop your audio file here, or click to browse
-                  your device.
-                </p>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+                    Drag and drop your audio file here, or click to browse
+                    your device.
+                  </p>
 
-                <span className="mt-5 rounded-lg bg-white/5 px-4 py-2 text-xs font-medium text-slate-400">
-                  WAV · MP3 · M4A · WEBM
-                </span>
+                  <span className="mt-5 rounded-lg bg-white/5 px-4 py-2 text-xs font-medium text-slate-400">
+                    WAV · MP3 · M4A · WEBM · Max 25 MB
+                  </span>
 
-              </button>
+                </button>
 
-            </div>
-          )}
+              </div>
+            )}
 
           {/* =================================================
               AUDIO PREVIEW
           ================================================== */}
 
-          {audioUrl && audioFile && (
-            <div className="mt-10">
+          {audioUrl &&
+            audioFile && (
+              <div className="mt-10">
 
-              <div className="rounded-2xl border border-cyan-400/10 bg-[#050d18] p-6">
+                <div className="rounded-2xl border border-cyan-400/10 bg-[#050d18] p-6">
 
-                {/* Success */}
-                <div className="flex items-center gap-3">
+                  {/* Success */}
+                  <div className="flex items-center gap-3">
 
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-400/10">
-                    <Check className="h-5 w-5 text-cyan-400" />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cyan-400/10">
+                      <Check className="h-5 w-5 text-cyan-400" />
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        Voice sample ready
+                      </p>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        {audioFile.name}
+                      </p>
+                    </div>
+
                   </div>
 
-                  <div>
-                    <p className="text-sm font-semibold text-white">
-                      Voice sample ready
-                    </p>
+                  {/* Audio */}
+                  <div className="mt-6 rounded-xl border border-white/5 bg-white/2.5 p-4">
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      {audioFile.name}
-                    </p>
+                    <audio
+                      controls
+                      src={audioUrl}
+                      className="w-full"
+                    />
+
                   </div>
 
-                </div>
+                  {/* File information */}
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
 
-                {/* Audio */}
-                <div className="mt-6 rounded-xl border border-white/5 bg-white/2.5 p-4">
-                  <audio
-                    controls
-                    src={audioUrl}
-                    className="w-full"
-                  />
-                </div>
+                    <div className="rounded-xl border border-white/5 bg-white/2 p-4">
 
-                {/* File information */}
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      <p className="text-xs text-slate-600">
+                        File
+                      </p>
 
-                  <div className="rounded-xl border border-white/5 bg-white/2 p-4">
-                    <p className="text-xs text-slate-600">
-                      File
-                    </p>
+                      <p className="mt-1 truncate text-sm font-medium text-slate-300">
+                        {audioFile.name}
+                      </p>
 
-                    <p className="mt-1 truncate text-sm font-medium text-slate-300">
-                      {audioFile.name}
-                    </p>
+                    </div>
+
+                    <div className="rounded-xl border border-white/5 bg-white/2 p-4">
+
+                      <p className="text-xs text-slate-600">
+                        Size
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-slate-300">
+                        {(
+                          audioFile.size /
+                          1024
+                        ).toFixed(1)}{" "}
+                        KB
+                      </p>
+
+                    </div>
+
+                    <div className="rounded-xl border border-white/5 bg-white/2 p-4">
+
+                      <p className="text-xs text-slate-600">
+                        Status
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-cyan-400">
+                        Ready
+                      </p>
+
+                    </div>
+
                   </div>
 
-                  <div className="rounded-xl border border-white/5 bg-white/2 p-4">
-                    <p className="text-xs text-slate-600">
-                      Size
-                    </p>
+                  {/* Error */}
+                  {error && (
+                    <div className="mt-5 flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-400/5 p-4">
 
-                    <p className="mt-1 text-sm font-medium text-slate-300">
-                      {(audioFile.size / 1024).toFixed(1)} KB
-                    </p>
+                      <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+
+                      <div>
+                        <p className="text-sm font-medium text-red-300">
+                          Analysis failed
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-red-300/60">
+                          {error}
+                        </p>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+
+                    <button
+                      type="button"
+                      onClick={
+                        resetRecording
+                      }
+                      disabled={
+                        isAnalyzing
+                      }
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Choose Another
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        handleAnalyze
+                      }
+                      disabled={
+                        isAnalyzing
+                      }
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <LoaderCircle className="h-4 w-4 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Waves className="h-4 w-4" />
+                          Analyze Voice
+                        </>
+                      )}
+                    </button>
+
                   </div>
 
-                  <div className="rounded-xl border border-white/5 bg-white/2 p-4">
-                    <p className="text-xs text-slate-600">
-                      Status
-                    </p>
+                  {/* Analysis status */}
+                  {isAnalyzing && (
+                    <div className="mt-5 rounded-xl border border-cyan-400/10 bg-cyan-400/5 p-4">
 
-                    <p className="mt-1 text-sm font-medium text-cyan-400">
-                      Ready
-                    </p>
-                  </div>
+                      <div className="flex items-center gap-3">
 
-                </div>
+                        <LoaderCircle className="h-4 w-4 animate-spin text-cyan-400" />
 
-                {/* Actions */}
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            Analyzing voice sample
+                          </p>
 
-                  <button
-                    onClick={resetRecording}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 px-5 py-3 text-sm font-medium text-slate-300 transition hover:bg-white/5"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Choose Another
-                  </button>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Preprocessing audio, extracting acoustic features,
+                            and running the research model.
+                          </p>
+                        </div>
 
-                  <button
-                    onClick={handleAnalyze}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
-                  >
-                    <Waves className="h-4 w-4" />
-                    Analyze Voice
-                  </button>
+                      </div>
+
+                    </div>
+                  )}
 
                 </div>
 
               </div>
-
-            </div>
-          )}
+            )}
 
           {/* Instructions */}
-          {!audioUrl && (
-            <div className="mt-8 flex items-start gap-3 rounded-xl border border-white/5 bg-white/1.5 p-4">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
+          {!audioUrl &&
+            !error && (
+              <div className="mt-8 flex items-start gap-3 rounded-xl border border-white/5 bg-white/1.5 p-4">
 
-              <p className="text-xs leading-5 text-slate-600">
-                For the research-based workflow, the voice sample can
-                consist of a sustained vowel sound. Keep the recording
-                clear and minimize background noise.
-              </p>
-            </div>
-          )}
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
+
+                <p className="text-xs leading-5 text-slate-600">
+                  For the research-based workflow, use a sustained vowel
+                  sound such as "AH". Keep the recording clear, maintain a
+                  consistent microphone distance, and minimize background
+                  noise.
+                </p>
+
+              </div>
+            )}
+
+          {/* Error before file */}
+          {!audioUrl &&
+            error && (
+              <div className="mt-8 flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-400/5 p-4">
+
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+
+                <div>
+                  <p className="text-sm font-medium text-red-300">
+                    Something went wrong
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-red-300/60">
+                    {error}
+                  </p>
+                </div>
+
+              </div>
+            )}
 
         </div>
 

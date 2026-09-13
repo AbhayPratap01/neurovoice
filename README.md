@@ -1,17 +1,60 @@
-# React + Vite
+# NeuroVoice
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+### Parkinson's Voice Pattern Classification using Machine Learning
 
-Currently, two official plugins are available:
+NeuroVoice is a college minor project that explores the use of **voice characteristics and machine learning for Parkinson's-related voice pattern classification**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The system accepts a sustained vowel voice recording, processes the audio, extracts acoustic features, and uses a trained machine learning pipeline to classify the voice pattern.
 
-## React Compiler
+> **Disclaimer:** NeuroVoice is an academic research prototype. It is NOT a medical device and does NOT provide a clinical diagnosis.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Overview
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-"# neurovoice" 
+Parkinson's disease can be associated with changes in speech and vocal characteristics. These changes may affect properties of the voice that can be analyzed computationally.
+
+NeuroVoice explores whether acoustic information from a sustained vowel recording can be processed and classified using machine learning.
+
+The project is based on a research-oriented workflow involving:
+
+- Sustained vowel voice recording
+- Audio preprocessing
+- Acoustic feature extraction
+- Feature selection
+- Machine learning classification
+- Probability-based model output
+- Web-based visualization of the result
+
+---
+
+## How It Works
+
+```text
+User
+ │
+ │ Record / Upload Voice
+ ▼
+React Frontend
+ │
+ │ WAV Audio
+ ▼
+FastAPI Backend
+ │
+ ▼
+Audio Preprocessing
+ │
+ ▼
+Acoustic Feature Extraction
+ │
+ ▼
+ANOVA-F Feature Selection
+ │
+ ▼
+Logistic Regression Model
+ │
+ ▼
+Prediction + Probability
+ │
+ ▼
+Results Dashboard
