@@ -955,7 +955,7 @@ export default function Detection() {
                   </p>
 
                   {/* Recording guideline */}
-                  <div className="mt-8 flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.015] p-4">
+                  <div className="mt-8 flex items-start gap-3 rounded-xl border border-white/5 bg-white/1.5 p-4">
 
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
 
