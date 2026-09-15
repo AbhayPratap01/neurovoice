@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { convertBlobToWav } from "../utils/audioUtils";
-import { predictVoice } from "../Services/api";
+import { predictVoice } from "../services/api";
 
 import {
   Link,
