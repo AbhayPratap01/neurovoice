@@ -21,9 +21,14 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from services.audio_preprocessing import preprocess_audio, AudioValidationError
-from services.feature_extraction import extract_features_vector
-from services.prediction import ModelService
+try:
+    from .services.audio_preprocessing import preprocess_audio, AudioValidationError
+    from .services.feature_extraction import extract_features_vector
+    from .services.prediction import ModelService
+except ImportError:
+    from services.audio_preprocessing import preprocess_audio, AudioValidationError
+    from services.feature_extraction import extract_features_vector
+    from services.prediction import ModelService
 
 
 # Setup logging
@@ -70,7 +75,10 @@ app = FastAPI(
 # CORS Middleware Configuration
 # ------------------------------------------------------------------------------
 # Default allowed origins for local development; configurable via environment variable
-cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
+cors_env = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+)
 allowed_origins: List[str] = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
 
 app.add_middleware(

@@ -6,7 +6,6 @@ export default function AudioWaveform({
   height = 220,
 }) {
   const canvasRef = useRef(null);
-  const animationRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
