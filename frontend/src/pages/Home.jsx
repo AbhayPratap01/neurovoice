@@ -9,6 +9,8 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { Link } from "react-router-dom";
+
 export default function Home() {
   return (
     <main id="home">
@@ -68,14 +70,14 @@ export default function Home() {
             {/* Buttons */}
             <div className="mt-9 flex flex-col gap-4 sm:flex-row">
 
-              <a
-                href="#detect"
-                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
-              >
-                Start Voice Analysis
-
-                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-              </a>
+              <Link
+            to="/detect"
+            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+          >
+            Start Voice Analysis
+            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+          </Link>
+              
 
               <a
                 href="#research"
