@@ -76,8 +76,8 @@ app = FastAPI(
 # ------------------------------------------------------------------------------
 # Default allowed origins for local development; configurable via environment variable
 cors_env = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+    "CORS_ORIGINS","https://neurovoice-client.onrender.com"
+    # "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
 )
 allowed_origins: List[str] = [origin.strip() for origin in cors_env.split(",") if origin.strip()]
 
