@@ -759,19 +759,19 @@ export default function Detection() {
   ------------------------------ */
 
   return (
-    <main className="min-h-screen bg-[#07111f] pt-20">
+    <main className="min-h-screen bg-[#07111f] pt-16 sm:pt-20">
 
       {/* Background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute left-1/2 top-32 h-112.5 w-112.5 -translate-x-1/2 rounded-full bg-cyan-400/5 blur-[140px]" />
       </div>
 
-      <div className="relative mx-auto max-w-5xl px-6 py-12 lg:px-8">
+      <div className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
 
         {/* Back */}
         <Link
           to="/"
-          className="mb-10 inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-white"
+          className="mb-6 inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-white sm:mb-10"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Home
@@ -780,19 +780,19 @@ export default function Detection() {
         {/* Heading */}
         <div className="text-center">
 
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10">
-            <AudioLines className="h-7 w-7 text-cyan-400" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 sm:h-14 sm:w-14">
+            <AudioLines className="h-6 w-6 text-cyan-400 sm:h-7 sm:w-7" />
           </div>
 
-          <p className="mt-6 text-sm font-bold tracking-[0.2em] text-cyan-400 uppercase">
+          <p className="mt-5 text-xs font-bold tracking-[0.16em] text-cyan-400 uppercase sm:mt-6 sm:text-sm sm:tracking-[0.2em]">
             Voice Analysis
           </p>
 
-          <h1 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+          <h1 className="mt-3 break-words text-3xl font-bold tracking-tight text-white sm:mt-4 sm:text-5xl">
             Analyze your voice
           </h1>
 
-          <p className="mx-auto mt-5 max-w-2xl leading-7 text-slate-400">
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-slate-400 sm:mt-5 sm:text-base sm:leading-7">
             Record a sustained vowel sound or upload an existing voice
             recording for analysis.
           </p>
@@ -800,7 +800,7 @@ export default function Detection() {
         </div>
 
         {/* Main card */}
-        <div className="mt-12 rounded-3xl border border-white/10 bg-white/2.5 p-5 shadow-2xl sm:p-8">
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/2.5 p-3 shadow-2xl sm:mt-12 sm:p-8">
 
           {/* Mode selector */}
           <div className="mx-auto flex max-w-md rounded-xl border border-white/10 bg-black/20 p-1">
@@ -812,7 +812,7 @@ export default function Detection() {
                 setMode("record");
               }}
               disabled={isAnalyzing}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 ${
                 mode === "record"
                   ? "bg-cyan-400 text-slate-950"
                   : "text-slate-400 hover:text-white"
@@ -829,7 +829,7 @@ export default function Detection() {
                 setMode("upload");
               }}
               disabled={isAnalyzing}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              className={`flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-2 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 ${
                 mode === "upload"
                   ? "bg-cyan-400 text-slate-950"
                   : "text-slate-400 hover:text-white"
@@ -849,7 +849,7 @@ export default function Detection() {
             !audioUrl && (
               <div className="mt-10">
 
-                <div className="rounded-2xl border border-white/10 bg-[#050d18] p-8 sm:p-12">
+                <div className="rounded-2xl border border-white/10 bg-[#050d18] p-4 sm:p-12">
 
                   {/* Instruction */}
                   <div className="text-center">
@@ -858,7 +858,7 @@ export default function Detection() {
                       <Mic className="h-6 w-6 text-cyan-400" />
                     </div>
 
-                    <h2 className="mt-5 text-xl font-semibold text-white">
+                    <h2 className="mt-5 text-lg font-semibold text-white sm:text-xl">
                       {isRecording
                         ? 'Keep saying "AH"...'
                         : "Ready to record"}

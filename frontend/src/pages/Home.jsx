@@ -38,13 +38,13 @@ export default function Home() {
           }}
         />
 
-        <div className="relative mx-auto grid min-h-[calc(100vh-80px)] max-w-7xl items-center gap-16 px-6 py-20 lg:grid-cols-2 lg:px-8">
+        <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl items-center gap-12 px-4 py-12 sm:min-h-[calc(100vh-80px)] sm:gap-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:px-8">
 
           {/* LEFT SIDE */}
-          <div>
+          <div className="min-w-0">
 
             {/* Badge */}
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/5 px-4 py-2">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 sm:mb-7 sm:px-4">
               <Sparkles className="h-4 w-4 text-cyan-400" />
 
               <span className="text-xs font-semibold tracking-wide text-cyan-300">
@@ -53,7 +53,7 @@ export default function Home() {
             </div>
 
             {/* Heading */}
-            <h1 className="max-w-3xl text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-3xl break-words text-4xl font-bold leading-[1.08] tracking-tight text-white sm:text-6xl lg:text-7xl">
               Detecting Parkinson's
               <span className="mt-2 block text-cyan-400">
                 through voice.
@@ -61,18 +61,18 @@ export default function Home() {
             </h1>
 
             {/* Description */}
-            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-400">
+            <p className="mt-6 max-w-xl text-base leading-7 text-slate-400 sm:mt-7 sm:text-lg sm:leading-8">
               NeuroVoice analyzes voice characteristics using machine
               learning and deep learning techniques to estimate
               Parkinson's disease risk.
             </p>
 
             {/* Buttons */}
-            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4">
 
               <Link
             to="/detect"
-            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+            className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 sm:w-auto sm:px-6"
           >
             Start Voice Analysis
             <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -81,7 +81,7 @@ export default function Home() {
 
               <a
                 href="#research"
-                className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/3 px-6 py-3.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.07]"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/3 px-5 py-3.5 text-sm font-medium text-slate-200 transition hover:bg-white/[0.07] sm:w-auto sm:px-6"
               >
                 Explore Research
               </a>
@@ -89,7 +89,7 @@ export default function Home() {
             </div>
 
             {/* Features */}
-            <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3">
+            <div className="mt-8 flex flex-wrap gap-x-5 gap-y-3 sm:mt-9 sm:gap-x-6">
 
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <ShieldCheck className="h-4 w-4 text-cyan-400" />
@@ -110,12 +110,12 @@ export default function Home() {
           </div>
 
           {/* RIGHT SIDE */}
-          <div className="relative">
+          <div className="relative min-w-0">
 
             {/* Glow */}
             <div className="absolute -inset-10 rounded-full bg-cyan-400/5 blur-3xl" />
 
-            <div className="relative rounded-3xl border border-white/10 bg-white/[0.035] p-5 shadow-2xl backdrop-blur-xl">
+            <div className="relative rounded-3xl border border-white/10 bg-white/[0.035] p-3 shadow-2xl backdrop-blur-xl sm:p-5">
 
               {/* Card header */}
               <div className="mb-6 flex items-center justify-between">
@@ -137,7 +137,7 @@ export default function Home() {
               </div>
 
               {/* Waveform */}
-              <div className="flex h-60 items-center justify-center gap-0.75 overflow-hidden rounded-2xl border border-white/5 bg-[#050d18] px-5">
+              <div className="flex h-44 items-center justify-center gap-0.75 overflow-hidden rounded-2xl border border-white/5 bg-[#050d18] px-3 sm:h-60 sm:px-5">
 
                 {Array.from({ length: 85 }).map((_, index) => {
 
@@ -160,9 +160,9 @@ export default function Home() {
               </div>
 
               {/* Signal data */}
-              <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="mt-5 grid grid-cols-1 gap-3 min-[380px]:grid-cols-3">
 
-                <div className="rounded-xl border border-white/5 bg-white/2.5 p-4">
+                <div className="min-w-0 rounded-xl border border-white/5 bg-white/2.5 p-3 sm:p-4">
                   <p className="text-xs text-slate-500">
                     Duration
                   </p>
@@ -172,7 +172,7 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-white/5 bg-white/2.5 p-4">
+                <div className="min-w-0 rounded-xl border border-white/5 bg-white/2.5 p-3 sm:p-4">
                   <p className="text-xs text-slate-500">
                     Signal
                   </p>
@@ -182,7 +182,7 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-white/5 bg-white/2.5 p-4">
+                <div className="min-w-0 rounded-xl border border-white/5 bg-white/2.5 p-3 sm:p-4">
                   <p className="text-xs text-slate-500">
                     Analysis
                   </p>
@@ -205,9 +205,9 @@ export default function Home() {
 
       <section
         id="how-it-works"
-        className="border-t border-white/5 py-28"
+        className="border-t border-white/5 py-20 sm:py-28"
       >
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
           <div className="max-w-2xl">
 

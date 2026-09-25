@@ -65,7 +65,7 @@ export default function Results() {
     result.processing_time_ms;
 
   return (
-    <main className="min-h-screen bg-[#07111f] px-6 pb-20 pt-32">
+    <main className="min-h-screen bg-[#07111f] px-4 pb-16 pt-24 sm:px-6 sm:pb-20 sm:pt-32">
 
       <div className="mx-auto max-w-6xl">
 
@@ -80,7 +80,7 @@ export default function Results() {
             Analysis Complete
           </p>
 
-          <h1 className="mt-4 text-4xl font-bold text-white sm:text-5xl">
+          <h1 className="mt-4 text-3xl font-bold text-white sm:text-5xl">
             Voice Analysis Results
           </h1>
 
@@ -91,19 +91,19 @@ export default function Results() {
         </div>
 
         {/* Main result */}
-        <div className="mt-12 grid gap-6 lg:grid-cols-2">
+        <div className="mt-8 grid gap-4 sm:mt-12 sm:gap-6 lg:grid-cols-2">
 
           {/* Prediction */}
-          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5 sm:p-8">
 
             <div className="flex items-center justify-between">
 
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-slate-500">
                   Model Classification
                 </p>
 
-                <h2 className="mt-2 text-2xl font-bold text-white">
+                <h2 className="mt-2 break-words text-2xl font-bold text-white">
                   {label}
                 </h2>
               </div>
@@ -123,7 +123,7 @@ export default function Results() {
             {/* Probability */}
             <div className="mt-12 text-center">
 
-              <div className="text-6xl font-bold tracking-tight text-white">
+              <div className="text-5xl font-bold tracking-tight text-white sm:text-6xl">
                 {percentage}%
               </div>
 
@@ -161,7 +161,7 @@ export default function Results() {
           </div>
 
           {/* Processing */}
-          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-8">
+          <div className="rounded-3xl border border-white/10 bg-white/[0.025] p-5 sm:p-8">
 
             <p className="text-sm text-slate-500">
               Analysis Details
@@ -232,7 +232,7 @@ export default function Results() {
         </div>
 
         {/* Model information */}
-        <div className="mt-6 rounded-3xl border border-cyan-400/10 bg-cyan-400/[0.025] p-8">
+        <div className="mt-4 rounded-3xl border border-cyan-400/10 bg-cyan-400/[0.025] p-5 sm:mt-6 sm:p-8">
 
           <p className="text-sm font-bold tracking-[0.18em] text-cyan-400 uppercase">
             Research Model
@@ -266,7 +266,7 @@ export default function Results() {
 
           <Link
             to="/detect"
-            className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-6 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-5 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 sm:w-auto sm:px-6"
           >
             <RotateCcw className="h-4 w-4" />
             Analyze Another Recording

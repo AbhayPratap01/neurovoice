@@ -9,12 +9,12 @@ export default function Navbar() {
 
   return (
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/10 bg-[#07111f]/85 backdrop-blur-xl">
-      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10">
-            <Activity className="h-5 w-5 text-cyan-400" />
+        <Link to="/" className="flex items-center gap-2 sm:gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-cyan-400/20 bg-cyan-400/10 sm:h-10 sm:w-10">
+            <Activity className="h-4 w-4 text-cyan-400 sm:h-5 sm:w-5" />
           </div>
 
           <div>
@@ -22,7 +22,7 @@ export default function Navbar() {
               NeuroVoice
             </div>
 
-            <div className="text-[10px] font-medium tracking-[0.18em] text-slate-500">
+            <div className="hidden text-[10px] font-medium tracking-[0.18em] text-slate-500 sm:block">
               VOICE INTELLIGENCE
             </div>
           </div>
@@ -101,7 +101,7 @@ export default function Navbar() {
 
       {/* Mobile navigation */}
       {open && (
-        <div className="border-t border-white/10 bg-[#07111f] px-6 py-6 md:hidden">
+        <div className="border-t border-white/10 bg-[#07111f] px-4 py-5 md:hidden">
           <div className="flex flex-col gap-5">
 
             <Link
