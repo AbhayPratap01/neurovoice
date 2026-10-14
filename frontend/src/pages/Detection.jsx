@@ -35,7 +35,7 @@ export default function Detection() {
      Constants
   ------------------------------ */
 
-  const MAX_RECORDING_TIME = 3;
+  const MAX_RECORDING_TIME = 5;
   const MIN_RECORDING_TIME = 1.5;
 
   /* -----------------------------
