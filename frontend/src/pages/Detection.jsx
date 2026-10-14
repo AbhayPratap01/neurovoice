@@ -35,7 +35,7 @@ export default function Detection() {
      Constants
   ------------------------------ */
 
-  const MAX_RECORDING_TIME = 3;
+  const MAX_RECORDING_TIME = 5;
   const MIN_RECORDING_TIME = 1.5;
 
   /* -----------------------------
@@ -120,7 +120,7 @@ export default function Detection() {
         clampedElapsed
       );
 
-      /* Automatically stop at 3 seconds */
+      /* Automatically stop at the configured maximum duration. */
       if (
         elapsed >=
         MAX_RECORDING_TIME
@@ -909,7 +909,7 @@ export default function Detection() {
 
                     <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-500">
                       {isRecording
-                        ? "Hold the vowel steadily. Recording will stop automatically after 3 seconds."
+                        ? `Hold the vowel steadily. Recording will stop automatically after ${MAX_RECORDING_TIME} seconds.`
                         : 'Take a breath and sustain the vowel sound "AH" clearly for upto 5 seconds.'}
                     </p>
 
@@ -954,7 +954,7 @@ export default function Detection() {
                     </div>
 
                     <p className="mt-3 text-xs text-slate-600">
-                      Maximum recording time: 5 seconds
+                      Maximum recording time: {MAX_RECORDING_TIME} seconds
                     </p>
 
                   </div>
